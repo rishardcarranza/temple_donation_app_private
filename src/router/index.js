@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHashHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
 const routes = [
@@ -36,13 +36,18 @@ const routes = [
         path: 'pending',
         name: 'Pending',
         component: () => import('@/views/PendingView.vue')
+      },
+      {
+        path: 'reports',
+        name: 'Reports',
+        component: () => import('@/views/ReportsView.vue')
       }
     ]
   }
 ]
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHashHistory(),
   routes
 })
 

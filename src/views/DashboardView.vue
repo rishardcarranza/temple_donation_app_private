@@ -18,7 +18,7 @@
             @update:model-value="loadProgress"
           >
             <template v-slot:label>
-              <span class="text-white font-weight-medium" style="display: block;">Periodo</span>
+              <span class="text-white font-weight-medium" style="display: block;">Periodo actual</span>
             </template>
           </v-select>
         </v-card>

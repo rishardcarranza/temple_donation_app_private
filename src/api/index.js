@@ -57,6 +57,10 @@ export default {
     approve: (id) => api.patch(`/donations/${id}/approve`),
     reject: (id, motivo) => api.patch(`/donations/${id}/reject`, { motivo }),
     getProgress: (month) => api.get('/donations/progress', { params: { month } }),
-    getReport: (month) => api.get('/donations/report', { params: { month } })
+    getReport: (month) => api.get('/donations/report', { params: { month } }),
+    getByMember: (memberId) => api.get('/donations/by-member', { params: { member_id: memberId } }),
+    getTopMembers: (month) => api.get('/donations/top-members', { params: { month } }),
+    getAccumulated: (month) => api.get('/donations/accumulated', { params: { month } }),
+    getStats: (month) => api.get('/donations/stats', { params: { month } })
   }
 }

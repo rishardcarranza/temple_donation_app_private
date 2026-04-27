@@ -50,25 +50,25 @@
     <v-bottom-navigation v-model="activeNav" grow class="d-lg-none bg-white fixed-bottom" elevation="4">
       <v-btn to="/dashboard" value="dashboard" color="primary">
         <v-icon>mdi-home</v-icon>
-        <span class="text-caption mt-1">Home</span>
+        <span class="text-caption mt-1 nav-label">Dashboard</span>
+      </v-btn>
+      <v-btn to="/members" value="members" color="primary">
+        <v-icon>mdi-account-group</v-icon>
+        <span class="text-caption mt-1 nav-label">Miembros</span>
       </v-btn>
       <v-btn to="/donations" value="donations" color="primary">
         <v-icon>mdi-cash-multiple</v-icon>
-        <span class="text-caption mt-1">Aportaciones</span>
+        <span class="text-caption mt-1 nav-label">Aportaciones</span>
       </v-btn>
       <v-btn to="/pending" value="pending" color="primary">
         <v-badge :content="pendingCount" color="accent" :model-value="pendingCount > 0">
           <v-icon>mdi-clock-alert</v-icon>
         </v-badge>
-        <span class="text-caption mt-1">Pendientes</span>
+        <span class="text-caption mt-1 nav-label">Pendientes</span>
       </v-btn>
       <v-btn to="/reports" value="reports" color="primary">
         <v-icon>mdi-chart-bar</v-icon>
-        <span class="text-caption mt-1">Reportes</span>
-      </v-btn>
-      <v-btn to="/members" value="members" color="primary">
-        <v-icon>mdi-account-group</v-icon>
-        <span class="text-caption mt-1">Miembros</span>
+        <span class="text-caption mt-1 nav-label">Reportes</span>
       </v-btn>
     </v-bottom-navigation>
 
@@ -146,6 +146,10 @@ onMounted(() => {
 
 .v-bottom-navigation {
   border-top: 0.5px solid #E5E7EB !important;
+}
+
+.nav-label {
+  font-size: 0.65rem!important;
 }
 
 .v-app-bar {

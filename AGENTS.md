@@ -1,7 +1,7 @@
 # 🔐 AGENTS.md — App Privada: Aportaciones Templo Admin
 
 ## Descripción
-Panel de administración PWA para el líder de la iglesia. Permite gestionar miembros, registrar aportaciones manualmente, aprobar o rechazar aportaciones enviadas por el público, configurar el periodo activo y consultar reportes mensuales. Acceso con autenticación JWT. Diseño Mobile First, instalable como PWA.
+Panel de administración PWA para el líder de la iglesia. Permite gestionar miembros, registrar aportaciones manualmente, aprobar o rechazar aportaciones enviadas por el público, configurar el periodo activo y consultar reportes mensuales. Acceso con autenticación JWT. Diseño Mobile First, instalable como PWA (funciona correctamente en iOS Safari).
 
 ---
 
@@ -15,9 +15,10 @@ Panel de administración PWA para el líder de la iglesia. Permite gestionar mie
 | UI Components | Vuetify 3 |
 | Estado global | Pinia |
 | HTTP client | Axios |
-| Router | Vue Router 4 |
+| Router | Vue Router 4 (hash mode para PWA iOS) |
 | Gráficas | Chart.js + vue-chartjs |
 | Lenguaje | JavaScript (sin TypeScript) |
+| Utilidades | src/utils/date.js (format Month, getCurrentMonth, getYearMonths) |
 
 ---
 
@@ -40,12 +41,10 @@ aportaciones-templo-admin/
 │   │   └── notifications.js        # Snackbars / alertas globales
 │   │
 │   ├── api/
-│   │   ├── index.js                # Instancia axios + interceptor JWT
-│   │   ├── auth.js                 # login, refresh, logout
-│   │   ├── members.js              # CRUD miembros
-│   │   ├── donations.js            # CRUD aportaciones + aprobar/rechazar
-│   │   ├── periods.js              # Configurar periodo activo
-│   │   └── reports.js              # Endpoints de reportes
+│   │   └── index.js                # Instancia axios + interceptor JWT
+│   │
+│   ├── utils/
+│   │   └── date.js                # Funciones de fecha (getCurrentMonth, formatMonth, getYearMonths)
 │   │
 │   ├── layouts/
 │   │   ├── AuthLayout.vue          # Layout simple para pantalla de login
@@ -92,23 +91,59 @@ export default defineConfig({
     vue(),
     VitePWA({
       registerType: 'autoUpdate',
+      manifestFilename: 'manifest.webmanifest',
       manifest: {
-        name: 'Admin Aportaciones Templo',
+        name: 'Admin - Aportaciones Templo',
         short_name: 'Admin Templo',
         description: 'Panel de administración de aportaciones',
-        theme_color: '#1B5E20',
-        background_color: '#ffffff',
+        lang: 'es',
+        theme_color: '#0A3D1F',
+        background_color: '#FFFFFF',
         display: 'standalone',
+        orientation: 'portrait',
         start_url: '/',
+        scope: '/',
         icons: [
           { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' }
-        ]
+          { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+          { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
+        ],
+        categories: ['business', 'productivity'],
+        prefer_related_applications: false
       }
     })
   ]
 })
 ```
+
+### `index.html`
+```html
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#0A3D1F" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <title>Admin Templo</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
+```
+
+> **Importante:** Para que funcione como app nativa en iOS Safari:
+> - Usar `status-bar-style: default` (no "black-translucent")
+> - NO usar `viewport-fit=cover`
+> - NO agregar meta tags duplicadas
+> - Usar hash mode en el router (`createWebHashHistory()`)
 
 ---
 
@@ -217,10 +252,12 @@ router.beforeEach((to) => {
 
 ### 📊 Reportes (`/reports`)
 - Selector de mes/periodo
-- Total recaudado vs meta (número y barra)
-- Gráfico de barras: recaudado por mes (últimos 6 meses) usando Chart.js
+- Total acumulado (todas las aportaciones)
+- Miembros activos, aprobadas, pendientes
+- Top 10 miembros con más aportaciones
+- Gráfico de barras: historial últimos 6 meses (Chart.js)
 - Tabla detallada: nombre, monto, fecha, estado
-- Botón: **Exportar a Excel** (genera archivo .xlsx o .csv descargable)
+- Botón: **Exportar a CSV** (genera archivo descargable)
 
 ### 📅 Periodos (`/periods`)
 - Periodo activo actual (visible en la app pública)
@@ -300,9 +337,18 @@ En móvil usar **navigation drawer** (menú lateral que se abre con hamburguesa)
 - [ ] Periodos: activar periodo + configurar meta
 
 ### PWA
-- [ ] Íconos generados y en `/public/icons/`
-- [ ] Probar instalación en Android (Chrome)
-- [ ] Probar instalación en iOS (Safari)
+- [x] Íconos generados y en `/public/icons/`
+- [x] Configurar vite.config.js con PWA manifest
+- [x] Usar hash mode en router para mejor compatibilidad con PWA iOS
+- [x] Probar instalación en Android (Chrome)
+- [x] Probar instalación en iOS (Safari)
+
+### API Endpoints (Backend)
+- [x] `/donations/periods` - Lista de períodos con totales
+- [x] `/donations/stats` - Estadísticas globales (con filtro por mes)
+- [x] `/donations/accumulated` - Total acumulado (con filtro por mes)
+- [x] `/donations/top-members` - Ranking de miembros (con filtro por mes)
+- [x] `/members` - Soporta filtro por nombre (`?name=`)
 
 ---
 
