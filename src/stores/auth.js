@@ -9,7 +9,8 @@ export const useAuthStore = defineStore('auth', {
   state: () => ({
     token: getStoredToken(),
     user: null,
-    refreshToken: localStorage.getItem('refresh_token') || null
+    refreshToken: localStorage.getItem('refresh_token') || null,
+    isRefreshing: false
   }),
 
   getters: {
@@ -30,31 +31,31 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async refresh() {
-      if (!this.refreshToken) return false
+      if (!this.refreshToken || this.isRefreshing) return false
+      this.isRefreshing = true
       try {
         const response = await api.auth.refresh(this.refreshToken)
-        this.token = response.data.access_token
+        const data = response.data
+        this.token = data.access_token
+        this.refreshToken = data.refresh_token
+        
         sessionStorage.setItem('access_token', this.token)
         localStorage.setItem('access_token', this.token)
+        localStorage.setItem('refresh_token', this.refreshToken)
         return true
       } catch (e) {
         this.logout()
         return false
+      } finally {
+        this.isRefreshing = false
       }
-    },
-
-    async initAuth() {
-      if (this.token) return true
-      if (this.refreshToken) {
-        return await this.refresh()
-      }
-      return false
     },
 
     logout() {
       this.token = null
       this.user = null
       this.refreshToken = null
+      this.isRefreshing = false
       sessionStorage.removeItem('access_token')
       localStorage.removeItem('access_token')
       localStorage.removeItem('refresh_token')

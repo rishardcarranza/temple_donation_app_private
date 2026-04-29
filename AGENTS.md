@@ -157,17 +157,19 @@ LoginView
 POST /auth/login → { access_token, refresh_token }
    │
    ├── Guardar tokens en Pinia store (auth.js)
-   ├── Guardar access_token en memoria
+   ├── Guardar access_token en memoria y sessionStorage
    ├── Guardar refresh_token en localStorage
    └── Redirigir a /dashboard
 ```
 
-### Interceptor Axios (`src/api/index.js`)
+### Interceptor Axios con Mutex (`src/api/index.js`)
 ```javascript
 import axios from 'axios'
 import { useAuthStore } from '@/stores/auth'
 
 const api = axios.create({ baseURL: import.meta.env.VITE_API_BASE_URL })
+
+let isRefreshing = false
 
 // Adjuntar token a cada request
 api.interceptors.request.use(config => {
@@ -176,17 +178,150 @@ api.interceptors.request.use(config => {
   return config
 })
 
-// Si expira el token, intentar refresh automático
+// Si expira el token, intentar refresh automático (una sola vez)
 api.interceptors.response.use(
   res => res,
   async error => {
-    if (error.response?.status === 401) {
+    const originalRequest = error.config
+    
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true
+      
+      if (isRefreshing) return Promise.reject(error)
+      
+      isRefreshing = true
       const auth = useAuthStore()
-      const refreshed = await auth.refresh()
-      if (refreshed) return api.request(error.config)
-      auth.logout()
+      
+      try {
+        const refreshed = await auth.refresh()
+        isRefreshing = false
+        
+        if (refreshed) {
+          originalRequest.headers.Authorization = `Bearer ${auth.token}`
+          return api.request(originalRequest)
+        }
+      } catch (e) {
+        isRefreshing = false
+      }
+      
+      // Si falló, redirigir al login
+      if (!auth.token) {
+        window.location.hash = '#/login'
+      }
     }
     return Promise.reject(error)
+  }
+)
+
+export default api
+```
+
+### Auth Store con Mutex (`src/stores/auth.js`)
+```javascript
+import { defineStore } from 'pinia'
+import api from '@/api'
+
+const getStoredToken = () => {
+  return sessionStorage.getItem('access_token') || localStorage.getItem('access_token')
+}
+
+export const useAuthStore = defineStore('auth', {
+  state: () => ({
+    token: getStoredToken(),
+    user: null,
+    refreshToken: localStorage.getItem('refresh_token') || null,
+    isRefreshing: false
+  }),
+
+  getters: {
+    isAuthenticated: (state) => !!state.token
+  },
+
+  actions: {
+    async login(email, password) {
+      const response = await api.auth.login(email, password)
+      const data = response.data
+      this.token = data.access_token
+      this.refreshToken = data.refresh_token
+      
+      sessionStorage.setItem('access_token', this.token)
+      localStorage.setItem('access_token', this.token)
+      localStorage.setItem('refresh_token', this.refreshToken)
+      return data
+    },
+
+    async refresh() {
+      if (!this.refreshToken || this.isRefreshing) return false
+      this.isRefreshing = true
+      try {
+        const response = await api.auth.refresh(this.refreshToken)
+        const data = response.data
+        this.token = data.access_token
+        this.refreshToken = data.refresh_token  // Guardar nuevo refresh_token
+        
+        sessionStorage.setItem('access_token', this.token)
+        localStorage.setItem('access_token', this.token)
+        localStorage.setItem('refresh_token', this.refreshToken)
+        return true
+      } catch (e) {
+        this.logout()
+        return false
+      } finally {
+        this.isRefreshing = false
+      }
+    },
+
+    logout() {
+      this.token = null
+      this.user = null
+      this.refreshToken = null
+      this.isRefreshing = false
+      sessionStorage.removeItem('access_token')
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+    }
+  }
+})
+```
+
+### Guards de ruta (`src/router/index.js`)
+```javascript
+router.beforeEach(async (to, from) => {
+  const auth = useAuthStore()
+  
+  // Login: si ya tiene token, ir a dashboard
+  if (to.meta.requiresAuth === false) {
+    if (auth.token) return '/dashboard'
+  }
+  
+  // Rutas protegidas: intentar refresh si no hay token
+  if (to.meta.requiresAuth && !auth.token) {
+    if (auth.refreshToken && !auth.isRefreshing) {
+      const ok = await auth.refresh()
+      if (ok) return true
+    }
+    if (!auth.token) return '/login'
+  }
+})
+```
+
+### AuthLayout (`src/layouts/AuthLayout.vue`)
+Layout para vistas de autenticación (Login). Incluye snackbar para notificaciones:
+```vue
+<template>
+  <v-app>
+    <router-view />
+    <v-snackbar v-model="snackbarVisible" :color="notifications.type" location="top">
+      {{ notifications.message }}
+    </v-snackbar>
+  </v-app>
+</template>
+```
+
+> **Reglas del flujo de auth:**
+> - Solo UNA petición de refresh a la vez (usar `isRefreshing` mutex)
+> - Siempre guardar el NUEVO refresh_token cuando se renueva el access token
+> - Si refresh falla, redirigir a `/login`
   }
 )
 
@@ -293,7 +428,8 @@ En móvil usar **navigation drawer** (menú lateral que se abre con hamburguesa)
 ### `stores/auth.js`
 - `token` — access token en memoria (se pierde al cerrar, por seguridad)
 - `user` — datos del usuario logueado
-- `refresh_token` — en localStorage
+- `refreshToken` — refresh token en localStorage
+- `isRefreshing` — flag mutex para evitar múltiples refresh simultáneos
 - Acciones: `login()`, `logout()`, `refresh()`
 
 ### `stores/notifications.js`
@@ -316,30 +452,32 @@ En móvil usar **navigation drawer** (menú lateral que se abre con hamburguesa)
 ## Checklist de Desarrollo
 
 ### Setup
-- [ ] Inicializar proyecto con Vite + Vue 3
-- [ ] Instalar: `vuetify`, `pinia`, `vue-router`, `axios`, `vite-plugin-pwa`, `chart.js`, `vue-chartjs`
-- [ ] Configurar `main.js` con todos los plugins
-- [ ] Configurar `vite.config.js` con PWA manifest
-- [ ] Crear instancia axios con interceptores JWT
+- [x] Inicializar proyecto con Vite + Vue 3
+- [x] Instalar: `vuetify`, `pinia`, `vue-router`, `axios`, `vite-plugin-pwa`, `chart.js`, `vue-chartjs`
+- [x] Configurar `main.js` con todos los plugins
+- [x] Configurar `vite.config.js` con PWA manifest
+- [x] Crear instancia axios con interceptores JWT
 
 ### Auth
-- [ ] `LoginView.vue` con formulario email + password
-- [ ] `stores/auth.js` con login, logout, refresh
-- [ ] Guards de ruta implementados
-- [ ] Refresh automático de token en interceptor
+- [x] `LoginView.vue` con formulario email + password
+- [x] `stores/auth.js` con login, logout, refresh (con mutex)
+- [x] Guards de ruta implementados
+- [x] Refresh automático de token en interceptor (con mutex global)
+- [x] `AuthLayout.vue` con snackbar para notificaciones
 
 ### Por cada vista
-- [ ] Dashboard con meta, progreso y pendientes
-- [ ] Miembros: lista + modal crear/editar
-- [ ] Aportaciones: lista filtrable + modal registro manual
-- [ ] Pendientes: lista con aprobar/rechazar
-- [ ] Reportes: gráfico + tabla + exportar
-- [ ] Periodos: activar periodo + configurar meta
+- [x] Dashboard con meta, progreso y pendientes
+- [x] Miembros: lista + modal crear/editar
+- [x] Aportaciones: lista filtrable + modal registro manual
+- [x] Pendientes: lista con aprobar/rechazar
+- [x] Reportes: gráfico + tabla + exportar
+- [x] Periodos: activar periodo + configurar meta
 
 ### PWA
 - [x] Íconos generados y en `/public/icons/`
 - [x] Configurar vite.config.js con PWA manifest
 - [x] Usar hash mode en router para mejor compatibilidad con PWA iOS
+- [x] index.html con meta tags correctas para iOS
 - [x] Probar instalación en Android (Chrome)
 - [x] Probar instalación en iOS (Safari)
 

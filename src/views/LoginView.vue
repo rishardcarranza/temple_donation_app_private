@@ -21,17 +21,27 @@
                   bg-color="surface"
                   required
                 />
-                <v-text-field
-                  v-model="password"
-                  label="Contraseña"
-                  prepend-inner-icon="mdi-lock-outline"
-                  :type="showPassword ? 'text' : 'password'"
-                  :append-icon="showPassword ? 'mdi-eye-off-outline' : 'mdi-eye-outline'"
-                  @click:append="showPassword = !showPassword"
-                  :error-messages="passwordErrors"
-                  bg-color="surface"
-                  required
-                />
+                <div class="password-input-wrapper mb-2">
+                  <v-text-field
+                    v-model="password"
+                    label="Contraseña"
+                    prepend-inner-icon="mdi-lock-outline"
+                    :type="showPassword ? 'text' : 'password'"
+                    :error-messages="passwordErrors"
+                    bg-color="surface"
+                    required
+                    hide-details
+                  />
+                  <v-btn
+                    icon
+                    variant="text"
+                    size="small"
+                    class="password-toggle"
+                    @click="showPassword = !showPassword"
+                  >
+                    <v-icon>{{ showPassword ? 'mdi-eye-off-outline' : 'mdi-eye-outline' }}</v-icon>
+                  </v-btn>
+                </div>
                 <v-btn
                   type="submit"
                   color="primary"
@@ -112,5 +122,29 @@ async function handleLogin() {
 
 .v-btn {
   font-weight: 600;
+}
+
+.password-input-wrapper {
+  position: relative;
+}
+
+.password-input-wrapper :deep(.v-field) {
+  padding-right: 44px !important;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-top: 2px;
+}
+
+.password-toggle .v-icon {
+  opacity: 0.6;
+}
+
+.password-toggle:hover .v-icon {
+  opacity: 1;
 }
 </style>

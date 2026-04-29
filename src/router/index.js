@@ -4,9 +4,15 @@ import { useAuthStore } from '@/stores/auth'
 const routes = [
   {
     path: '/login',
-    name: 'Login',
-    component: () => import('@/views/LoginView.vue'),
-    meta: { requiresAuth: false }
+    component: () => import('@/layouts/AuthLayout.vue'),
+    meta: { requiresAuth: false },
+    children: [
+      {
+        path: '',
+        name: 'Login',
+        component: () => import('@/views/LoginView.vue')
+      }
+    ]
   },
   {
     path: '/',
@@ -51,14 +57,21 @@ const router = createRouter({
   routes
 })
 
-router.beforeEach((to) => {
+router.beforeEach(async (to, from) => {
   const auth = useAuthStore()
+  
   if (to.meta.requiresAuth === false) {
     if (auth.token) {
       return '/dashboard'
     }
   } else if (to.meta.requiresAuth && !auth.token) {
-    return '/login'
+    if (auth.refreshToken && !auth.isRefreshing) {
+      const ok = await auth.refresh()
+      if (ok) return true
+    }
+    if (!auth.token) {
+      return '/login'
+    }
   }
 })
 
