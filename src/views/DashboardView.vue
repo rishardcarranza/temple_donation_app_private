@@ -3,6 +3,7 @@
     <v-row>
       <v-col cols="12">
         <v-card color="primary" class="pa-3">
+          <div class="text-white text-h6 font-weight-bold mb-2">{{ wardName }}</div>
           <v-select
             v-model="selectedPeriod"
             :items="periodOptions"
@@ -154,6 +155,7 @@ const recentDonations = ref([])
 const members = ref([])
 const periods = ref([])
 const selectedPeriod = ref('')
+const wardName = ref('')
 
 const periodOptions = computed(() => {
   return periods.value.map(p => ({
@@ -161,6 +163,15 @@ const periodOptions = computed(() => {
     value: p.month
   }))
 })
+
+async function loadWardInfo() {
+  try {
+    const res = await api.public.getInfo()
+    wardName.value = res.data.ward_name || 'Aportaciones Templo'
+  } catch (e) {
+    wardName.value = 'Aportaciones Templo'
+  }
+}
 
 async function loadPeriods() {
   try {
@@ -248,6 +259,7 @@ async function loadData() {
 }
 
 onMounted(async () => {
+  await loadWardInfo()
   await loadPeriods()
   await loadProgress()
   await loadData()

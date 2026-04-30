@@ -105,11 +105,11 @@
             <div class="text-h6 font-weight-medium">Detalle del Período</div>
             <v-btn
               color="primary"
-              size="small"
-              prepend-icon="mdi-download"
+              variant="outlined"
+              density="compact"
               @click="exportToCsv"
             >
-              Exportar CSV
+              Exportar
             </v-btn>
           </div>
           

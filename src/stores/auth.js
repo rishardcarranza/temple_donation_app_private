@@ -27,7 +27,19 @@ export const useAuthStore = defineStore('auth', {
       sessionStorage.setItem('access_token', this.token)
       localStorage.setItem('access_token', this.token)
       localStorage.setItem('refresh_token', this.refreshToken)
+      
+      await this.fetchUser()
       return data
+    },
+
+    async fetchUser() {
+      if (!this.token) return
+      try {
+        const response = await api.users.getMe()
+        this.user = response.data
+      } catch (e) {
+        console.error('Error fetching user:', e)
+      }
     },
 
     async refresh() {
@@ -42,6 +54,8 @@ export const useAuthStore = defineStore('auth', {
         sessionStorage.setItem('access_token', this.token)
         localStorage.setItem('access_token', this.token)
         localStorage.setItem('refresh_token', this.refreshToken)
+        
+        await this.fetchUser()
         return true
       } catch (e) {
         this.logout()
@@ -51,7 +65,12 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    logout() {
+    async logout() {
+      try {
+        await api.auth.logout()
+      } catch (e) {
+        console.error('Logout API error:', e)
+      }
       this.token = null
       this.user = null
       this.refreshToken = null

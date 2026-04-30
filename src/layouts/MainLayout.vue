@@ -6,11 +6,18 @@
       <v-spacer />
       <v-menu>
         <template v-slot:activator="{ props }">
-          <v-btn icon v-bind="props" class="mr-2">
+          <v-btn v-bind="props" class="mr-2" variant="text">
             <v-icon>mdi-account-circle</v-icon>
           </v-btn>
         </template>
         <v-list density="compact" class="py-0">
+          <v-list-item class="text-muted">
+            <template v-slot:prepend>
+              <v-icon size="small">mdi-account</v-icon>
+            </template>
+            <v-list-item-title>{{ userDisplay }}</v-list-item-title>
+          </v-list-item>
+          <v-divider />
           <v-list-item @click="handleLogout" class="text-error">
             <template v-slot:prepend>
               <v-icon size="small">mdi-logout</v-icon>
@@ -98,7 +105,21 @@ const notifications = useNotificationsStore()
 const drawer = ref(false)
 const activeNav = ref('dashboard')
 const pendingCount = ref(0)
+const wardName = ref('')
 const title = import.meta.env.VITE_APP_TITLE || 'Admin Templo'
+
+const userDisplay = computed(() => {
+  if (auth.user?.full_name) {
+    return auth.user.full_name
+  }
+  if (auth.user?.name) {
+    return auth.user.name
+  }
+  if (auth.user?.email) {
+    return auth.user.email
+  }
+  return 'Usuario'
+})
 
 const snackbarVisible = computed({
   get: () => notifications.show && notifications.message.length > 0,
@@ -122,13 +143,26 @@ async function loadPendingCount() {
   }
 }
 
-function handleLogout() {
-  auth.logout()
+async function loadWardInfo() {
+  try {
+    const response = await api.public.getInfo()
+    wardName.value = response.data.ward_name || 'Admin Templo'
+  } catch (e) {
+    wardName.value = 'Admin Templo'
+  }
+}
+
+async function handleLogout() {
+  await auth.logout()
   router.push('/login')
 }
 
 onMounted(() => {
+  loadWardInfo()
   loadPendingCount()
+  if (!auth.user) {
+    auth.fetchUser()
+  }
 })
 </script>
 

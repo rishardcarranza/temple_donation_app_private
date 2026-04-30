@@ -67,7 +67,10 @@ router.beforeEach(async (to, from) => {
   } else if (to.meta.requiresAuth && !auth.token) {
     if (auth.refreshToken && !auth.isRefreshing) {
       const ok = await auth.refresh()
-      if (ok) return true
+      if (ok) {
+        await auth.fetchUser()
+        return true
+      }
     }
     if (!auth.token) {
       return '/login'

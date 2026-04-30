@@ -60,6 +60,12 @@ export default {
     refresh: (refreshToken) => api.post('/auth/refresh', { refresh_token: refreshToken }),
     logout: () => api.post('/auth/logout')
   },
+  public: {
+    getInfo: () => api.get('/public/info')
+  },
+  users: {
+    getMe: () => api.get('/users/me')
+  },
   members: {
     getAll: (params) => api.get('/members', { params }),
     getById: (id) => api.get(`/members/${id}`),
