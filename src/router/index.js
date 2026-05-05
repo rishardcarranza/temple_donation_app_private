@@ -47,6 +47,12 @@ const routes = [
         path: 'reports',
         name: 'Reports',
         component: () => import('@/views/ReportsView.vue')
+      },
+      {
+        path: 'settings',
+        name: 'Settings',
+        component: () => import('@/views/SettingsView.vue'),
+        meta: { requiresAuth: true, requiresAdmin: true }
       }
     ]
   }
@@ -75,6 +81,10 @@ router.beforeEach(async (to, from) => {
     if (!auth.token) {
       return '/login'
     }
+  }
+  
+  if (to.meta.requiresAdmin && auth.user?.role !== 'admin') {
+    return '/dashboard'
   }
 })
 

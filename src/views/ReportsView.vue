@@ -168,6 +168,8 @@ const accumulated = ref(null)
 const stats = ref(null)
 const members = ref([])
 const periods = ref([])
+const last6Months = ref(null)
+
 
 const tableHeaders = [
   { title: 'Miembro', key: 'member', sortable: true },
@@ -177,8 +179,8 @@ const tableHeaders = [
 ]
 
 const chartData = computed(() => {
-  if (!periods.value || periods.value.length === 0) return null
-  const monthlyData = periods.value.slice(0, 6).reverse()
+  if (!last6Months.value || last6Months.value.length === 0) return null
+  const monthlyData = (last6Months.value || []).slice().reverse()
   return {
     labels: monthlyData.map(m => m.month_display || formatMonth(m.month)),
     datasets: [{
@@ -288,11 +290,25 @@ async function loadStats() {
   }
 }
 
+async function loadLast6Months() {
+  try {
+    const res = await api.donations.getLast6Months()
+    const data = res.data
+    last6Months.value = data.periods || data || []
+  } catch (e) {
+    console.error("Error loading last 6 months:", e)
+    last6Months.value = []
+  }
+}
+
 async function loadPeriods() {
   try {
     const res = await api.periods.getAll()
-    periods.value = res.data.periods || []
-    periods.value = res.data.periods || []
+    periods.value = res.data || []
+    if (periods.value.length > 0) {
+      const active = periods.value.find(p => p.is_active)
+      selectedMonth.value = active ? active.month : periods.value[0].month
+    }
   } catch (e) {
     console.error('Error loading periods:', e)
     periods.value = []
@@ -317,7 +333,8 @@ async function loadAll() {
     loadAccumulated(),
     loadStats(),
     loadMembers(),
-    loadPeriods()
+    loadPeriods(),
+    loadLast6Months()
   ])
 }
 
@@ -344,7 +361,6 @@ function exportToCsv() {
 
 onMounted(async () => {
   months.value = getYearMonths()
-  selectedMonth.value = getCurrentMonth()
   await loadAll()
 })
 </script>

@@ -74,10 +74,10 @@ export default {
     delete: (id) => api.delete(`/members/${id}`)
   },
   periods: {
-    getAll: () => api.get('/donations/periods'),
+    getAll: () => api.get('/periods'),
     getActive: () => api.get('/periods/active'),
     create: (data) => api.post('/periods', data),
-    setActive: (id) => api.patch(`/periods/${id}/activate`)
+    setActive: (month) => api.put(`/periods/${month}/activate`)
   },
   donations: {
     getAll: (params) => api.get('/donations', { params }),
@@ -90,6 +90,12 @@ export default {
     getByMember: (memberId) => api.get('/donations/by-member', { params: { member_id: memberId } }),
     getTopMembers: (month) => api.get('/donations/top-members', { params: { month } }),
     getAccumulated: (month) => api.get('/donations/accumulated', { params: { month } }),
-    getStats: (month) => api.get('/donations/stats', { params: { month } })
+    getStats: (month) => api.get("/donations/stats", { params: { month } }),
+    getLast6Months: () => api.get("/donations/last-6-months"),
+    updateStatus: (id, data) => api.patch(`/donations/${id}/status`, data)
+  },
+  settings: {
+    get: () => api.get('/settings'),
+    update: (data) => api.patch('/settings', data)
   }
 }

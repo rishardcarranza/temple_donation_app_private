@@ -57,7 +57,7 @@ aportaciones-templo-admin/
 │       ├── DonationsView.vue
 │       ├── PendingView.vue
 │       ├── ReportsView.vue
-│       └── PeriodsView.vue
+│       └── SettingsView.vue
 │
 ├── .env
 ├── .env.example
@@ -213,7 +213,49 @@ api.interceptors.response.use(
   }
 )
 
-export default api
+export default {
+  auth: {
+    login: (email, password) => api.post('/auth/login', { email, password }),
+    refresh: (refreshToken) => api.post('/auth/refresh', { refresh_token: refreshToken }),
+    logout: () => api.post('/auth/logout')
+  },
+  public: {
+    getInfo: () => api.get('/public/info')
+  },
+  users: {
+    getMe: () => api.get('/users/me')
+  },
+  members: {
+    getAll: (params) => api.get('/members', { params }),
+    getById: (id) => api.get(`/members/${id}`),
+    create: (data) => api.post('/members', data),
+    update: (id, data) => api.patch(`/members/${id}`, data),
+    delete: (id) => api.delete(`/members/${id}`)
+  },
+  periods: {
+    getAll: () => api.get('/periods'),
+    getActive: () => api.get('/periods/active'),
+    create: (data) => api.post('/periods', data),
+    setActive: (month) => api.put(`/periods/${month}/activate`)
+  },
+  donations: {
+    getAll: (params) => api.get('/donations', { params }),
+    getById: (id) => api.get(`/donations/${id}`),
+    create: (data) => api.post('/donations', data),
+    approve: (id) => api.patch(`/donations/${id}/approve`),
+    reject: (id, motivo) => api.patch(`/donations/${id}/reject`, { motivo }),
+    getProgress: (month) => api.get('/donations/progress', { params: { month } }),
+    getReport: (month) => api.get('/donations/report', { params: { month } }),
+    getByMember: (memberId) => api.get('/donations/by-member', { params: { member_id: memberId } }),
+    getTopMembers: (month) => api.get('/donations/top-members', { params: { month } }),
+    getAccumulated: (month) => api.get('/donations/accumulated', { params: { month } }),
+    getStats: (month) => api.get('/donations/stats', { params: { month } })
+  },
+  settings: {
+    get: () => api.get('/settings'),
+    update: (data) => api.patch('/settings', data)
+  }
+}
 ```
 
 ### Auth Store con Mutex (`src/stores/auth.js`)
@@ -298,9 +340,17 @@ router.beforeEach(async (to, from) => {
   if (to.meta.requiresAuth && !auth.token) {
     if (auth.refreshToken && !auth.isRefreshing) {
       const ok = await auth.refresh()
-      if (ok) return true
+      if (ok) {
+        await auth.fetchUser()
+        return true
+      }
     }
     if (!auth.token) return '/login'
+  }
+  
+  // Rutas solo para admin
+  if (to.meta.requiresAdmin && auth.user?.role !== 'admin') {
+    return '/dashboard'
   }
 })
 ```
@@ -317,39 +367,22 @@ Layout para vistas de autenticación (Login). Incluye snackbar para notificacion
   </v-app>
 </template>
 ```
-
-> **Reglas del flujo de auth:**
-> - Solo UNA petición de refresh a la vez (usar `isRefreshing` mutex)
-> - Siempre guardar el NUEVO refresh_token cuando se renueva el access token
-> - Si refresh falla, redirigir a `/login`
-  }
-)
-
-export default api
 ```
 
-### Guards de ruta (`src/router/index.js`)
-```javascript
-router.beforeEach((to) => {
-  const auth = useAuthStore()
-  if (to.meta.requiresAuth && !auth.token) return '/login'
-  if (to.path === '/login' && auth.token) return '/dashboard'
-})
-```
 
 ---
 
 ## Rutas
 
-| Ruta | Vista | Auth | Descripción |
-|------|-------|------|-------------|
-| `/login` | LoginView | ❌ | Pantalla de acceso |
-| `/dashboard` | DashboardView | ✅ | Resumen y meta del mes |
-| `/members` | MembersView | ✅ | Gestión de miembros |
-| `/donations` | DonationsView | ✅ | Ver y registrar aportaciones |
-| `/pending` | PendingView | ✅ | Aprobar/rechazar aportaciones públicas |
-| `/reports` | ReportsView | ✅ | Reportes mensuales |
-| `/periods` | PeriodsView | ✅ | Configurar periodo activo |
+| Ruta | Vista | Auth | Admin | Descripción |
+|------|-------|------|-------|-------------|
+| `/login` | LoginView | ❌ | ❌ | Pantalla de acceso |
+| `/dashboard` | DashboardView | ✅ | ❌ | Resumen y meta del mes |
+| `/members` | MembersView | ✅ | ❌ | Gestión de miembros |
+| `/donations` | DonationsView | ✅ | ❌ | Ver y registrar aportaciones |
+| `/pending` | PendingView | ✅ | ❌ | Aprobar/rechazar aportaciones públicas |
+| `/reports` | ReportsView | ✅ | ❌ | Reportes mensuales |
+| `/settings` | SettingsView | ✅ | ✅ | Configuración general + Periodo activo |
 
 ---
 
@@ -375,8 +408,9 @@ router.beforeEach((to) => {
 - Filtro por estado (todas / aprobadas / rechazadas)
 - Lista de aportaciones con: nombre, monto, periodo, estado, origen (público/admin)
 - Botón para **registrar aportación manual** (abre modal)
-  - Campos: buscar miembro (autocomplete) o nombre libre, monto, periodo
-  - Las aportaciones manuales van directo a estado `APPROVED`
+  - Campos: buscar miembro (autocomplete) o nombre libre, monto, **selector de periodo**
+  - Las aportaciones manuales van directo a estado `approved`
+  - El periodo se selecciona manualmente (default: periodo activo)
 
 ### ⏳ Pendientes (`/pending`)
 - Lista solo de aportaciones con estado `PENDING`
@@ -386,7 +420,7 @@ router.beforeEach((to) => {
 - Badge en el ícono del menú con el conteo de pendientes
 
 ### 📊 Reportes (`/reports`)
-- Selector de mes/periodo
+- Selector de mes/periodo (**selecciona automáticamente el periodo activo**)
 - Total acumulado (todas las aportaciones)
 - Miembros activos, aprobadas, pendientes
 - Top 10 miembros con más aportaciones
@@ -394,11 +428,19 @@ router.beforeEach((to) => {
 - Tabla detallada: nombre, monto, fecha, estado
 - Botón: **Exportar a CSV** (genera archivo descargable)
 
-### 📅 Periodos (`/periods`)
-- Periodo activo actual (visible en la app pública)
-- Formulario para activar un nuevo periodo: mes + año + monto meta
-- Solo puede haber un periodo activo a la vez
-- Historial de periodos anteriores en tabla
+### ⚙️ Configuración (`/settings`) - **SOLO ADMIN**
+- Formulario de configuración general:
+  - Nombre del Barrio
+  - Monto por Defecto (Donaciones Públicas)
+  - Meta de Donación Mensual
+  - WhatsApp Líder General
+  - WhatsApp Sociedad de Socorros
+  - WhatsApp Cuórum de Élderes
+- **Selecto de Período Activo** con lista visual:
+  - Dropdown para cambiar periodo activo
+  - Lista de todos los periodos con indicador visual (activo/inactivo)
+  - Al cambiar, se llama a `PUT /api/v1/periods/{month}/activate`
+- **El menú solo es visible para usuarios con `role: "admin"`
 
 ---
 
@@ -420,6 +462,12 @@ En móvil usar **navigation drawer** (menú lateral que se abre con hamburguesa)
 ```
 
 > Usar **Bottom Navigation Bar** de Vuetify para móvil en lugar de sidebar. Es el patrón más natural para apps móviles.
+
+### Menú de Configuración (Solo Admin)
+- El ítem "Configuración" en el drawer solo aparece si `auth.user?.role === 'admin'`
+- Se usa `v-if="isAdmin"` en el `v-list-item`
+- La ruta `/settings` tiene meta `{ requiresAuth: true, requiresAdmin: true }`
+- El guard del router redirige a `/dashboard` si no es admin
 
 ---
 
@@ -466,12 +514,12 @@ En móvil usar **navigation drawer** (menú lateral que se abre con hamburguesa)
 - [x] `AuthLayout.vue` con snackbar para notificaciones
 
 ### Por cada vista
-- [x] Dashboard con meta, progreso y pendientes
+- [x] Dashboard con meta, progreso y pendientes (usa periodo activo de API)
 - [x] Miembros: lista + modal crear/editar
-- [x] Aportaciones: lista filtrable + modal registro manual
+- [x] Aportaciones: lista filtrable + modal registro manual (con selector de periodo)
 - [x] Pendientes: lista con aprobar/rechazar
-- [x] Reportes: gráfico + tabla + exportar
-- [x] Periodos: activar periodo + configurar meta
+- [x] Reportes: gráfico + tabla + exportar (usa periodo activo de API)
+- [x] Configuración: configuración general + activación de periodo (SOLO ADMIN)
 
 ### PWA
 - [x] Íconos generados y en `/public/icons/`
@@ -482,11 +530,15 @@ En móvil usar **navigation drawer** (menú lateral que se abre con hamburguesa)
 - [x] Probar instalación en iOS (Safari)
 
 ### API Endpoints (Backend)
-- [x] `/donations/periods` - Lista de períodos con totales
+- [x] `/periods` - Lista TODOS los períodos (activo/inactivo) - Frontend usa este
+- [x] `/donations/periods` - Lista de períodos con totales de donaciones
 - [x] `/donations/stats` - Estadísticas globales (con filtro por mes)
 - [x] `/donations/accumulated` - Total acumulado (con filtro por mes)
 - [x] `/donations/top-members` - Ranking de miembros (con filtro por mes)
 - [x] `/members` - Soporta filtro por nombre (`?name=`)
+- [x] `PUT /periods/{month}/activate` - Activar período (desactiva otros)
+- [x] `GET /settings` - Leer configuración general
+- [x] `PATCH /settings` - Actualizar configuración general
 
 ---
 
@@ -499,3 +551,6 @@ En móvil usar **navigation drawer** (menú lateral que se abre con hamburguesa)
 5. **Feedback siempre visible** — Toda acción (aprobar, rechazar, guardar) muestra snackbar de confirmación.
 6. **Sin eliminar aportaciones** — Solo rechazar. Los datos históricos nunca se borran.
 7. **Exportar reportes** — Generar CSV en el frontend con los datos ya cargados, sin endpoint especial.
+8. **Configuración solo para admin** — El menú y la ruta `/settings` están protegidos para `role: "admin"`.
+9. **Período activo desde API** — Dashboard y Reportes usan `is_active: true` de la API, no `getCurrentMonth()`.
+10. **Selector de período en donaciones** — Al registrar aportación manual, se puede elegir el período (default: activo).

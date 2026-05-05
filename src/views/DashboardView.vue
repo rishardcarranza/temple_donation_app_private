@@ -176,11 +176,10 @@ async function loadWardInfo() {
 async function loadPeriods() {
   try {
     const res = await api.periods.getAll()
-    periods.value = res.data.periods || []
+    periods.value = res.data || []
     if (periods.value.length > 0) {
-      const current = getCurrentMonth()
-      const found = periods.value.find(p => p.month === current)
-      selectedPeriod.value = found ? current : periods.value[0].month
+      const active = periods.value.find(p => p.is_active)
+      selectedPeriod.value = active ? active.month : periods.value[0].month
     }
   } catch (e) {
     console.error('Error loading periods:', e)

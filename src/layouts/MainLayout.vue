@@ -45,6 +45,9 @@
         <v-list-item to="/reports" prepend-icon="mdi-chart-bar">
           <v-list-item-title>Reportes</v-list-item-title>
         </v-list-item>
+        <v-list-item v-if="isAdmin" to="/settings" prepend-icon="mdi-cog">
+          <v-list-item-title>Configuración</v-list-item-title>
+        </v-list-item>
       </v-list>
     </v-navigation-drawer>
 
@@ -119,6 +122,10 @@ const userDisplay = computed(() => {
     return auth.user.email
   }
   return 'Usuario'
+})
+
+const isAdmin = computed(() => {
+  return auth.user?.role === 'admin'
 })
 
 const snackbarVisible = computed({

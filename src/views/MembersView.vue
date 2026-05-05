@@ -17,9 +17,9 @@
             <v-icon>mdi-magnify</v-icon>
           </v-btn>
         </div>
-        <div class="text-caption text-muted mt-1">
-          Total: {{ total }} miembros
-        </div>
+       <div class="text-caption text-muted mt-1 mb-2">
+         Mostrando {{ members.length }} de {{ total }} miembros
+       </div>
       </v-col>
     </v-row>
 
@@ -37,24 +37,13 @@
       </v-col>
     </v-row>
 
-    <v-row v-if="loading">
-      <v-col cols="12" class="text-center py-8">
-        <v-progress-circular indeterminate color="primary" />
-      </v-col>
-    </v-row>
-
-    <v-row v-else-if="members.length === 0">
-      <v-col cols="12">
-        <v-card class="pa-8 text-center">
-          <v-icon size="48" color="grey">mdi-account-group</v-icon>
-          <div class="text-h6 mt-2">No hay miembros</div>
-          <div class="text-muted">Agrega el primer miembro</div>
-        </v-card>
-      </v-col>
-    </v-row>
-
-    <v-row v-else>
-      <v-col cols="12" v-for="member in members" :key="member.id">
+     <v-row v-if="loading">
+       <v-col cols="12" class="text-center py-8">
+         <v-progress-circular indeterminate color="primary" />
+       </v-col>
+     </v-row>
+<v-row v-else>
+       <v-col cols="12" v-for="member in members" :key="member.id">
         <v-card class="pa-4">
           <div class="d-flex align-center">
             <v-avatar color="primary" size="48" class="mr-3">
@@ -91,15 +80,28 @@
           </div>
         </v-card>
       </v-col>
-    </v-row>
-
-    <v-row v-if="loadingMore">
-      <v-col cols="12" class="text-center py-4">
-        <v-progress-circular indeterminate color="primary" size="small" />
-      </v-col>
-    </v-row>
-    
-    <div ref="sentinel" style="height: 1px;"></div>
+</v-row>
+      
+      <!-- Load More Button -->
+      <v-row v-if="hasMore && !loading" class="mt-3 mb-6">
+        <v-col cols="12" class="text-center">
+          <v-btn 
+            color="primary" 
+            variant="outlined"
+            :loading="loadingMore"
+            :disabled="loadingMore"
+            @click="loadMembers(true)"
+          >
+            Cargar más ({{ total - members.length }} restantes)
+          </v-btn>
+        </v-col>
+      </v-row>
+      
+      <v-row v-if="loadingMore">
+       <v-col cols="12" class="text-center py-4">
+         <v-progress-circular indeterminate color="primary" size="small" />
+       </v-col>
+     </v-row>
 
     <v-dialog v-model="dialog" max-width="400" persistent>
       <v-card>
@@ -173,9 +175,7 @@ const form = ref(null)
 const page = ref(1)
 const size = 10
 const hasMore = ref(true)
-const sentinel = ref(null)
 const total = ref(0)
-let observer = null
 
 const editingMember = ref(null)
 const deletingMember = ref(null)
@@ -204,7 +204,7 @@ async function loadMembers(loadMore = false) {
     members.value = []
     hasMore.value = true
   }
-  
+
   try {
     const skip = (page.value - 1) * size
     const params = { skip, limit: size }
@@ -212,52 +212,68 @@ async function loadMembers(loadMore = false) {
     
     const response = await api.members.getAll(params)
     const data = response.data
-    const items = data.items || []
-    total.value = data.total || 0
+    
+    // Handle response format - could be array or object with items/total
+    let items = []
+    let totalFromApi = 0
+    
+    if (Array.isArray(data)) {
+      // API returns array directly
+      items = data
+      totalFromApi = data.length || 0
+    } else if (data && typeof data === 'object') {
+      // API returns object - check for common formats
+      if (data.items !== undefined) {
+        // Format: { items: [...], total: X }
+        items = data.items || []
+        totalFromApi = data.total || 0
+      } else if (data.length !== undefined) {
+        // Format: { length: X, 0: {...}, 1: {...}, ... } (array-like object)
+        items = Object.values(data).filter(item => item && typeof item === 'object')
+        totalFromApi = items.length
+      } else {
+        // Maybe the data itself is the item? Or empty?
+        console.warn('Unrecognized object format:', data)
+        items = []
+        totalFromApi = 0
+      }
+    } else {
+      // Fallback - treat as empty
+      console.warn('Unexpected API response type:', typeof data, data)
+      items = []
+      totalFromApi = 0
+    }
+    total.value = totalFromApi
     
     if (loadMore) {
+      const oldLength = members.value.length
       members.value.push(...items)
     } else {
       members.value = items
     }
     
-    if (!items || items.length === 0 || members.value.length >= total.value) {
-      hasMore.value = false
-    }
-  } catch (e) {
-    notifications.error('Error al cargar miembros')
-    hasMore.value = false
-  } finally {
-    loading.value = false
-    loadingMore.value = false
-  }
+    // Determine if there are more items to load
+    const hasMoreItems = items.length > 0 && (totalFromApi === 0 || members.value.length < totalFromApi)
+    hasMore.value = hasMoreItems
+   } catch (e) {
+     console.error('Error loading members:', e)
+     notifications.error('Error al cargar miembros')
+     hasMore.value = false
+    } finally {
+      loading.value = false
+      loadingMore.value = false
 }
+   }
 
-function setupObserver() {
-  if (observer) observer.disconnect()
-  
-  observer = new IntersectionObserver((entries) => {
-    if (entries[0].isIntersecting && hasMore.value && !loadingMore.value && !loading.value) {
-      loadMembers(true)
+    function openModal(member = null) {
+     editingMember.value = member
+      if (member) {
+        formData.value = { name: member.name, phone: member.phone || '' }
+      } else {
+        formData.value = { name: '', phone: '' }
+      }
+      dialog.value = true
     }
-  }, { rootMargin: '100px' })
-  
-  nextTick(() => {
-    if (sentinel.value) {
-      observer.observe(sentinel.value)
-    }
-  })
-}
-
-function openModal(member = null) {
-  editingMember.value = member
-  if (member) {
-    formData.value = { name: member.name, phone: member.phone || '' }
-  } else {
-    formData.value = { name: '', phone: '' }
-  }
-  dialog.value = true
-}
 
 function closeModal() {
   dialog.value = false
@@ -312,13 +328,12 @@ async function deleteMember() {
   }
 }
 
-onMounted(() => {
-  loadMembers()
-  setupObserver()
+onMounted(async () => {
+  await loadMembers()
 })
 
 onUnmounted(() => {
-  if (observer) observer.disconnect()
+  // No observer to clean up anymore
 })
 </script>
 
