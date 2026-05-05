@@ -215,12 +215,37 @@
                 <v-spacer />
                 <v-btn variant="text" @click="closeModal()">Cancelar</v-btn>
                 <v-btn color="primary" :loading="saving" :disabled="!formValid" @click="save()">
-                  Guardar
+Guardar
                 </v-btn>
               </v-card-actions>
             </v-card>
           </v-dialog>
-   </div>
+
+      <!-- Reject Dialog -->
+      <v-dialog v-model="rejectDialog" max-width="350" persistent>
+        <v-card>
+          <v-card-title class="pa-4 font-weight-bold">
+            Rechazar Aportación
+          </v-card-title>
+          <v-card-text class="pa-4 pt-0">
+            <div class="mb-3">
+              <strong>{{ getMemberName(selectedDonation?.member_id) }}</strong> - ${{ selectedDonation?.amount }}
+            </div>
+            <v-textarea
+              v-model="rejectMotivo"
+              label="Motivo (opcional)"
+              rows="3"
+              hide-details
+            />
+          </v-card-text>
+          <v-card-actions class="pa-4 pt-0">
+            <v-spacer />
+            <v-btn variant="text" @click="closeRejectDialog()">Cancelar</v-btn>
+            <v-btn color="error" :loading="updating" @click="confirmReject()">Rechazar</v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+    </div>
 </template>
 
 <script setup>
