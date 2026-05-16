@@ -12,11 +12,11 @@
             <v-card-text>
               <v-form @submit.prevent="handleLogin">
                 <v-text-field
-                  v-model="email"
-                  label="Email"
-                  prepend-inner-icon="mdi-email-outline"
-                  type="email"
-                  :error-messages="emailErrors"
+                  v-model="username"
+                  label="Usuario"
+                  prepend-inner-icon="mdi-account-outline"
+                  type="text"
+                  :error-messages="usernameErrors"
                   class="mb-2"
                   bg-color="surface"
                   required
@@ -71,14 +71,14 @@ const router = useRouter()
 const auth = useAuthStore()
 const notifications = useNotificationsStore()
 
-const email = ref('')
+const username = ref('')
 const password = ref('')
 const showPassword = ref(false)
 const loading = ref(false)
 
-const emailErrors = computed(() => {
-  if (!email.value) return []
-  return email.value.includes('@') ? [] : ['Email inválido']
+const usernameErrors = computed(() => {
+  if (!username.value) return []
+  return username.value.length >= 3 ? [] : ['Usuario muy corto']
 })
 
 const passwordErrors = computed(() => {
@@ -87,11 +87,11 @@ const passwordErrors = computed(() => {
 })
 
 async function handleLogin() {
-  if (!email.value || !password.value) return
+  if (!username.value || !password.value) return
   
   loading.value = true
   try {
-    await auth.login(email.value, password.value)
+    await auth.login(username.value, password.value)
     notifications.success('Bienvenido')
     await nextTick()
     router.push('/dashboard')

@@ -56,7 +56,7 @@ api.interceptors.response.use(
 
 export default {
   auth: {
-    login: (email, password) => api.post('/auth/login', { email, password }),
+    login: (username, password) => api.post('/auth/login', { username, password }),
     refresh: (refreshToken) => api.post('/auth/refresh', { refresh_token: refreshToken }),
     logout: () => api.post('/auth/logout')
   },

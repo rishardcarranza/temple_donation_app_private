@@ -18,8 +18,8 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
-    async login(email, password) {
-      const response = await api.auth.login(email, password)
+    async login(username, password) {
+      const response = await api.auth.login(username, password)
       const data = response.data
       this.token = data.access_token
       this.refreshToken = data.refresh_token
