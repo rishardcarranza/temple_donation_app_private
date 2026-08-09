@@ -6,6 +6,16 @@ const api = axios.create({
 })
 
 let isRefreshing = false
+let refreshSubscribers = []
+
+function onRefreshed(token) {
+  refreshSubscribers.forEach((cb) => cb(token))
+  refreshSubscribers = []
+}
+
+function subscribeTokenRefresh(cb) {
+  refreshSubscribers.push(cb)
+}
 
 api.interceptors.request.use(
   (config) => {
@@ -27,7 +37,12 @@ api.interceptors.response.use(
       originalRequest._retry = true
       
       if (isRefreshing) {
-        return Promise.reject(error)
+        return new Promise((resolve) => {
+          subscribeTokenRefresh((token) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`
+            resolve(api.request(originalRequest))
+          })
+        })
       }
       
       isRefreshing = true
@@ -38,6 +53,7 @@ api.interceptors.response.use(
         isRefreshing = false
         
         if (refreshed) {
+          onRefreshed(auth.token)
           originalRequest.headers.Authorization = `Bearer ${auth.token}`
           return api.request(originalRequest)
         }
@@ -64,7 +80,8 @@ export default {
     getInfo: () => api.get('/public/info')
   },
   users: {
-    getMe: () => api.get('/users/me')
+    getMe: () => api.get('/users/me'),
+    getAll: (params) => api.get('/users', { params })
   },
   members: {
     getAll: (params) => api.get('/members', { params }),

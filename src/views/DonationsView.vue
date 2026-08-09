@@ -27,6 +27,18 @@
             bg-color="white"
             class="filter-select"
           />
+          <v-select
+            v-model="filters.registered_by_id"
+            label="Ingresado por"
+            :items="users"
+            :item-title="u => u.full_name || u.username"
+            item-value="id"
+            clearable
+            hide-details
+            density="comfortable"
+            bg-color="white"
+            class="filter-select"
+          />
           <v-btn color="primary" @click="loadDonations()" :loading="loading">
             <v-icon>mdi-magnify</v-icon>
           </v-btn>
@@ -258,6 +270,7 @@ const notifications = useNotificationsStore()
 
 const donations = ref([])
 const members = ref([])
+const users = ref([])
 const loading = ref(false)
 const loadingMore = ref(false)
 const dialog = ref(false)
@@ -282,7 +295,8 @@ const activePeriod = ref(null)
 
 const filters = reactive({
    month: null,
-   status: null
+   status: null,
+   registered_by_id: null
 })
 
 const formData = ref({
@@ -357,6 +371,7 @@ async function loadDonations(loadMore = false) {
       const params = { skip, limit: size }
       if (filters.month) params.month = filters.month
       if (filters.status) params.status = filters.status
+      if (filters.registered_by_id) params.registered_by_id = filters.registered_by_id
       
       const response = await api.donations.getAll(params)
       const data = response.data
@@ -392,6 +407,16 @@ async function loadMembers() {
     members.value = data.items || data || []
   } catch (e) {
     console.error('Error loading members:', e)
+  }
+}
+
+async function loadUsers() {
+  try {
+    const response = await api.users.getAll({ skip: 0, limit: 100 })
+    const data = response.data
+    users.value = data.items || data || []
+  } catch (e) {
+    console.error('Error loading users:', e)
   }
 }
 
@@ -572,6 +597,7 @@ onMounted(async () => {
     filters.month = activePeriod.value
     
     await loadMembers()
+    await loadUsers()
     await loadDonations()
     // No more setupObserver()
   })
