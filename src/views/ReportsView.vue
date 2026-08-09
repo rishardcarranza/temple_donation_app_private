@@ -79,6 +79,11 @@
             <template v-slot:item.amount="{ item }">
               ${{ item.amount }}
             </template>
+            <template v-slot:item.month="{ item }">
+              <v-chip size="small" variant="tonal" color="primary">
+                {{ formatMonth(item.month) }}
+              </v-chip>
+            </template>
             <template v-slot:item.status="{ item }">
               <v-chip
                 :color="getStatusColor(item.status)"
@@ -127,9 +132,10 @@ const last6Months = ref(null)
 
 const tableHeaders = [
   { title: 'Miembro', key: 'member', sortable: true },
+  { title: 'Período', key: 'month', sortable: true },
   { title: 'Monto', key: 'amount', sortable: true },
   { title: 'Estado', key: 'status', sortable: true },
-  { title: 'Fecha', key: 'created_at', sortable: true }
+  { title: 'Fecha (Registro)', key: 'created_at', sortable: true }
 ]
 
 const chartData = computed(() => {
