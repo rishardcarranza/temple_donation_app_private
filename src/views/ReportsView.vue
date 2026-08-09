@@ -92,7 +92,7 @@
               {{ getMemberName(item.member_id) }}
             </template>
             <template v-slot:item.created_at="{ item }">
-              {{ formatDate(item.created_at) }}
+              <span class="text-no-wrap">{{ formatDate(item.created_at) }}</span>
             </template>
           </v-data-table>
           
