@@ -38,27 +38,6 @@
       </v-col>
     </v-row>
 
-    <v-row class="mt-2">
-      <v-col cols="6">
-        <v-card class="pa-4 h-100">
-          <div class="text-center">
-            <v-icon size="24" color="primary" class="mb-2">mdi-check-circle</v-icon>
-            <div class="text-caption text-muted mb-1">Aprobadas</div>
-            <div class="text-h5 font-weight-bold text-primary">{{ stats?.by_status?.approved || 0 }}</div>
-          </div>
-        </v-card>
-      </v-col>
-      <v-col cols="6">
-        <v-card class="pa-4 h-100">
-          <div class="text-center">
-            <v-icon size="24" color="warning" class="mb-2">mdi-clock</v-icon>
-            <div class="text-caption text-muted mb-1">Pendientes</div>
-            <div class="text-h5 font-weight-bold text-warning">{{ stats?.by_status?.pending || 0 }}</div>
-          </div>
-        </v-card>
-      </v-col>
-    </v-row>
-
     <v-row class="mt-2 pb-8">
       <v-col cols="12">
         <v-card class="pa-4">
@@ -69,30 +48,6 @@
           <div v-else class="text-center py-6 text-muted">
             <v-icon size="48" class="mb-2">mdi-chart-bar</v-icon>
             <div>No hay datos disponibles</div>
-          </div>
-        </v-card>
-      </v-col>
-    </v-row>
-
-    <v-row class="mt-4">
-      <v-col cols="12">
-        <v-card class="pa-4">
-          <div class="text-h6 font-weight-medium mb-3">Top Miembros</div>
-          <v-list v-if="topMembers.length > 0" class="pa-0">
-            <v-list-item v-for="(member, index) in topMembers" :key="member.member_id || member.id" class="px-0">
-              <template v-slot:prepend>
-                <v-avatar :color="index < 3 ? 'primary' : 'grey-lighten-1'" size="36" class="mr-3">
-                  <span class="text-white font-weight-bold">{{ member.rank || index + 1 }}</span>
-                </v-avatar>
-              </template>
-              <v-list-item-title>{{ member.member_name || member.name }}</v-list-item-title>
-              <template v-slot:append>
-                <span class="font-weight-bold text-primary">${{ member.total_amount || member.total }}</span>
-              </template>
-            </v-list-item>
-          </v-list>
-          <div v-else class="text-center py-4 text-muted">
-            No hay datos disponibles
           </div>
         </v-card>
       </v-col>
@@ -163,7 +118,6 @@ ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale)
 const selectedMonth = ref('')
 const months = ref([])
 const reportItems = ref([])
-const topMembers = ref([])
 const accumulated = ref(null)
 const stats = ref(null)
 const members = ref([])
@@ -238,7 +192,6 @@ function getMemberName(memberId) {
 async function onPeriodChange() {
   await Promise.all([
     loadReport(),
-    loadTopMembers(),
     loadAccumulated(),
     loadStats()
   ])
@@ -256,17 +209,6 @@ async function loadReport() {
   } catch (e) {
     console.error('Error loading report:', e)
     reportItems.value = []
-  }
-}
-
-async function loadTopMembers() {
-  try {
-    const res = await api.donations.getTopMembers(selectedMonth.value)
-    const data = res.data
-    topMembers.value = data.items || data || []
-  } catch (e) {
-    console.error('Error loading top members:', e)
-    topMembers.value = []
   }
 }
 
@@ -326,18 +268,6 @@ async function loadMembers() {
   }
 }
 
-async function loadAll() {
-  await Promise.all([
-    loadReport(),
-    loadTopMembers(),
-    loadAccumulated(),
-    loadStats(),
-    loadMembers(),
-    loadPeriods(),
-    loadLast6Months()
-  ])
-}
-
 function exportToCsv() {
   const headers = ['Miembro', 'Monto', 'Estado', 'Fecha']
   const rows = reportItems.value.map(item => [
@@ -361,7 +291,10 @@ function exportToCsv() {
 
 onMounted(async () => {
   months.value = getYearMonths()
-  await loadAll()
+  await loadPeriods()
+  await loadMembers()
+  await loadLast6Months()
+  await onPeriodChange()
 })
 </script>
 
