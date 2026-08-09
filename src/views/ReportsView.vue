@@ -275,9 +275,10 @@ async function loadMembers() {
 }
 
 function exportToCsv() {
-  const headers = ['Miembro', 'Monto', 'Estado', 'Fecha']
+  const headers = ['Miembro', 'Período', 'Monto', 'Estado', 'Fecha (Registro)']
   const rows = reportItems.value.map(item => [
     getMemberName(item.member_id),
+    formatMonth(item.month),
     item.amount,
     getStatusLabel(item.status),
     formatDate(item.created_at)
