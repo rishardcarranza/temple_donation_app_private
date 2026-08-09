@@ -16,7 +16,7 @@ export default defineConfig(({ command }) => {
     plugins: [
       vue(),
       VitePWA({
-        registerType: 'prompt',
+        registerType: 'autoUpdate',
         manifestFilename: 'manifest.webmanifest',
         manifest: {
           name: 'Admin - Aportaciones Templo',
