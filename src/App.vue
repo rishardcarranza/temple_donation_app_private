@@ -9,7 +9,7 @@
     >
       Nueva actualización disponible.
       <template v-slot:actions>
-        <v-btn color="white" variant="text" @click="updateServiceWorker()">
+        <v-btn color="white" variant="text" @click="updateSW()">
           Actualizar
         </v-btn>
         <v-btn color="white" variant="text" @click="needRefresh = false">
@@ -21,12 +21,26 @@
 </template>
 
 <script setup>
-import { useRegisterSW } from 'virtual:pwa-register/vue'
+import { ref, onMounted } from 'vue'
+import { registerSW } from 'virtual:pwa-register'
 
-const {
-  needRefresh,
-  updateServiceWorker,
-} = useRegisterSW()
+const needRefresh = ref(false)
+let updateSW = () => {}
+
+onMounted(() => {
+  try {
+    const update = registerSW({
+      onNeedRefresh() {
+        needRefresh.value = true
+      }
+    })
+    updateSW = () => {
+      if (update) update(true)
+    }
+  } catch (error) {
+    console.warn('PWA registration failed:', error)
+  }
+})
 </script>
 
 <style>
