@@ -7,61 +7,89 @@
     </v-row>
 
     <v-row>
-      <v-col cols="12" md="8" lg="6">
-        <v-card class="pa-4">
+      <v-col cols="12" md="6">
+        <v-card class="pa-4 h-100">
+          <div class="d-flex align-center mb-6">
+            <v-avatar color="primary" variant="tonal" rounded class="mr-3">
+              <v-icon>mdi-cog</v-icon>
+            </v-avatar>
+            <div>
+              <h3 class="text-h6 font-weight-bold mb-0">Datos del Sistema</h3>
+              <p class="text-caption text-muted mb-0">Información pública y metas</p>
+            </div>
+          </div>
+
           <v-form ref="form" v-model="formValid">
             <v-text-field
               v-model="formData.ward_name"
               label="Nombre del Barrio"
               :rules="[v => !!v || 'El nombre es requerido']"
-              class="mb-3"
+              class="mb-2"
             />
 
-            <v-text-field
-              v-model.number="formData.default_donation_amount"
-              label="Monto por Defecto (Donaciones Públicas)"
-              type="number"
-              prefix="$"
-              :rules="[v => !!v || 'El monto es requerido', v => v > 0 || 'Monto mayor a 0']"
-              class="mb-3"
-            />
+            <v-row>
+              <v-col cols="12" sm="6" class="pb-0">
+                <v-text-field
+                  v-model.number="formData.default_donation_amount"
+                  label="Monto por Defecto"
+                  type="number"
+                  prefix="$"
+                  :rules="[v => !!v || 'Requerido', v => v > 0 || 'Mayor a 0']"
+                  class="mb-2"
+                />
+              </v-col>
+              <v-col cols="12" sm="6" class="pb-0">
+                <v-text-field
+                  v-model.number="formData.donation_goal"
+                  label="Meta Mensual"
+                  type="number"
+                  prefix="$"
+                  :rules="[v => !!v || 'Requerida', v => v > 0 || 'Mayor a 0']"
+                  class="mb-2"
+                />
+              </v-col>
+            </v-row>
 
-            <v-text-field
-              v-model.number="formData.donation_goal"
-              label="Meta de Donación Mensual"
-              type="number"
-              prefix="$"
-              :rules="[v => !!v || 'La meta es requerida', v => v > 0 || 'Meta mayor a 0']"
-              class="mb-3"
-            />
+            <v-divider class="my-4"></v-divider>
+            <p class="text-subtitle-2 font-weight-bold mb-3">Contactos de WhatsApp</p>
 
             <v-text-field
               v-model="formData.whatsapp_leader_phone"
-              label="WhatsApp Líder General"
+              label="Líder General"
               placeholder="+1234567890"
-              :rules="[v => !!v || 'El número es requerido']"
-              class="mb-3"
+              prepend-inner-icon="mdi-whatsapp"
+              :rules="[v => !!v || 'Requerido']"
+              class="mb-2"
             />
 
-            <v-text-field
-              v-model="formData.whatsapp_socsoc_phone"
-              label="WhatsApp Sociedad de Socorros"
-              placeholder="+1234567890"
-              :rules="[v => !!v || 'El número es requerido']"
-              class="mb-3"
-            />
-
-            <v-text-field
-              v-model="formData.whatsapp_cuorum_phone"
-              label="WhatsApp Cuórum de Élderes"
-              placeholder="+1234567890"
-              :rules="[v => !!v || 'El número es requerido']"
-              class="mb-3"
-            />
+            <v-row>
+              <v-col cols="12" sm="6" class="pb-0">
+                <v-text-field
+                  v-model="formData.whatsapp_socsoc_phone"
+                  label="Sociedad de Socorro"
+                  placeholder="+1234567890"
+                  prepend-inner-icon="mdi-whatsapp"
+                  :rules="[v => !!v || 'Requerido']"
+                  class="mb-2"
+                />
+              </v-col>
+              <v-col cols="12" sm="6" class="pb-0">
+                <v-text-field
+                  v-model="formData.whatsapp_cuorum_phone"
+                  label="Cuórum de Élderes"
+                  placeholder="+1234567890"
+                  prepend-inner-icon="mdi-whatsapp"
+                  :rules="[v => !!v || 'Requerido']"
+                  class="mb-2"
+                />
+              </v-col>
+            </v-row>
 
             <v-btn
               color="primary"
               block
+              size="large"
+              class="mt-2 font-weight-bold"
               :loading="saving"
               :disabled="!formValid"
               @click="save"
@@ -71,32 +99,63 @@
           </v-form>
         </v-card>
       </v-col>
-      <v-col cols="12" md="8" lg="6" class="mt-4">
-        <v-card class="pa-4">
-          <h3 class="text-h6 font-weight-bold mb-3">Período Activo</h3>
-          <v-select
-            v-model="activePeriod"
-            label="Seleccionar Período Activo"
-            :items="periods"
-            item-title="month_display"
-            item-value="month"
-            :loading="loadingPeriods"
-            class="mb-3"
-            @update:model-value="activatePeriod"
-          />
-          <v-list density="compact" v-if="periods.length > 0">
-            <v-list-item v-for="p in periods" :key="p.month">
-              <template v-slot:prepend>
-                <v-icon :color="p.is_active ? 'success' : 'grey'">
-                  {{ p.is_active ? 'mdi-check-circle' : 'mdi-circle-outline' }}
-                </v-icon>
-              </template>
-              <v-list-item-title>{{ p.month_display }}</v-list-item-title>
-              <v-list-item-subtitle>{{ p.month }}</v-list-item-subtitle>
-              <template v-slot:append v-if="p.is_active">
-                <v-chip color="success" size="small">Activo</v-chip>
-              </template>
-            </v-list-item>
+
+      <v-col cols="12" md="6">
+        <v-card class="pa-4 h-100">
+          <div class="d-flex align-center mb-6">
+            <v-avatar color="primary" variant="tonal" rounded class="mr-3">
+              <v-icon>mdi-calendar-check</v-icon>
+            </v-avatar>
+            <div>
+              <h3 class="text-h6 font-weight-bold mb-0">Gestión de Períodos</h3>
+              <p class="text-caption text-muted mb-0">Selecciona el mes activo para el sistema</p>
+            </div>
+          </div>
+
+          <div v-if="loadingPeriods" class="d-flex justify-center pa-8">
+            <v-progress-circular indeterminate color="primary"></v-progress-circular>
+          </div>
+
+          <v-list v-else bg-color="transparent" class="pa-0">
+            <v-card
+              v-for="p in periods"
+              :key="p.month"
+              variant="outlined"
+              :color="p.is_active ? 'primary' : 'grey-lighten-1'"
+              :style="p.is_active ? 'border-width: 2px; background-color: rgba(var(--v-theme-primary), 0.05);' : ''"
+              class="mb-3"
+            >
+              <v-list-item class="pa-3">
+                <template v-slot:prepend>
+                  <v-icon size="x-large" :color="p.is_active ? 'primary' : 'grey'" class="mr-4">
+                    {{ p.is_active ? 'mdi-check-circle' : 'mdi-calendar-blank' }}
+                  </v-icon>
+                </template>
+
+                <v-list-item-title :class="['font-weight-bold', p.is_active ? 'text-primary' : '']">
+                  {{ p.month_display }}
+                </v-list-item-title>
+                <v-list-item-subtitle :class="p.is_active ? 'text-primary' : ''" style="opacity: 0.8;">
+                  {{ p.month }}
+                </v-list-item-subtitle>
+
+                <template v-slot:append>
+                  <v-chip v-if="p.is_active" color="primary" variant="elevated" size="small" class="font-weight-bold elevation-0">
+                    ACTIVO
+                  </v-chip>
+                  <v-btn
+                    v-else
+                    color="primary"
+                    variant="tonal"
+                    size="small"
+                    class="font-weight-bold"
+                    @click="activatePeriod(p.month)"
+                  >
+                    Activar
+                  </v-btn>
+                </template>
+              </v-list-item>
+            </v-card>
           </v-list>
         </v-card>
       </v-col>
